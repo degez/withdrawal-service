@@ -1,0 +1,211 @@
+= Withdrawal Service
+
+
+Design and implement a RESTful API (including data model and the backing implementation) with following functional requirements:
+
+* User can send money from their account to another user's account
+* User can send money from their account to an external withdrawal address through an API (API Stub is provided)
+* User can see operation progress
+
+I created the application using Vert.x toolkit.
+I have Account and WithdrawalTransaction entities.
+Account only has "address" and "balance" fields. Adding an extra User Id or information would make it more complex, for demonstration I thought this would be sufficient.
+
+Failed transaction amounts are paid back to the respective accounts by a periodic check.
+
+To differentiate between internal and external withdrawals I didn't open an extra endpoint.
+Instead, I am checking if data store already has the recipient account address.
+
+If yes, it means internal, if not it means external.
+
+Vert.x brings a downside on readibilty, I am sorry about that, for this much time I could only refactor this far.
+
+Otherwise WithdrawalAndAccountOperationsVerticle can be seperated to two different Verticles, which will bring complexity on operations and there will be an extra work to handle data stores in a singleton matter.
+
+Last note is I choose the integration tests to cover the cases, since no third party resource or dependency it fit my situation better. Tests can be improved.
+
+Line coverage: 87%
+Method coverage: 98%
+
+
+
+== Building
+
+ Java version 21 is required
+
+To package your application:
+```
+./mvnw clean package
+```
+
+To run your application after running above command:
+```
+java -jar target/transaction-1.0.0-SNAPSHOT-fat.jar
+
+```
+
+Or to run your application on project root directory:
+```
+./mvnw clean compile exec:java
+```
+
+
+=== Endpoint to create an account
+```
+Http Method: POST
+http://localhost:8888/accounts
+Response status: 201 on success
+400 if fields are empty
+409 Conflict in case account already exists
+422 if balance is negative
+```
+request as Json:
+```
+{
+    "address": "123124",
+    "balance": "1000"
+}
+```
+
+
+=== Endpoint to create a withdrawal
+```
+Http Method: POST
+http://localhost:8888/withdrawals
+Response status: 201 on success
+404 on related account not found
+422 if the balance is not enough for the operation
+```
+request as Json:
+```
+{
+  "fromAccountAddress": "123124",
+  "toAccountAddress": "123125",
+  "amount": 50.00
+}
+```
+
+
+=== Endpoint to check the status of the withdrawal
+```
+Http Method: GET
+http://localhost:8888/withdrawals/:withdrawalId/status
+Response status: 200 on success
+
+```
+response as Json:
+```
+{
+    "withdrawalId": "5ab90394-9b97-43c8-8324-11bf1c091196",
+    "status": "FAILED"
+}
+```
+
+=== Endpoint to get list of withdrawals
+```
+Http Method: GET
+http://localhost:8888/withdrawals
+Response status: 200 on success
+
+```
+response as Json:
+```
+[
+    {
+        "id": "5ab90394-9b97-43c8-8324-11bf1c091196",
+        "fromAccountAddress": {
+            "address": "123124"
+        },
+        "toAccountAddress": {
+            "address": "123125"
+        },
+        "amount": {
+            "amount": 50.0
+        },
+        "status": "PROCESSING"
+    }
+]
+```
+
+
+=== Endpoint to get list of accounts
+```
+Http Method: GET
+http://localhost:8888/accounts
+Response status: 200 on success
+
+```
+response as Json:
+```
+[
+    {
+        "address": "123124",
+        "balance": 1000
+    }
+]
+```
+
+=== Endpoint to get a single account using address
+```
+Http Method: GET
+http://localhost:8888/accounts/:address
+Response status: 200 on success
+404 if account does not exist
+```
+response as Json:
+```
+{
+    "address": "123124",
+    "balance": 1000.0
+}
+```
+
+
+=== Endpoint to get a withdrawal by id
+```
+Http Method: GET
+http://localhost:8888/withdrawals/:withdrawalId
+Response status: 200 on success
+404 if withdrawal does not exist
+
+```
+response as Json:
+```
+{
+    "id": "5ab90394-9b97-43c8-8324-11bf1c091196",
+    "fromAccountAddress": {
+        "address": "123124"
+    },
+    "toAccountAddress": {
+        "address": "123125"
+    },
+    "amount": {
+        "amount": 50.0
+    },
+    "status": "FAILED"
+}
+```
+
+
+=== Endpoint to add amount to the balance of an account
+```
+Http Method: POST
+http://localhost:8888/accounts/:address/balance
+Response status: 200 on success
+404 if account does not exist
+```
+request as Json:
+```
+{
+    "balance": "30"
+}
+```
+
+new balance response as Json:
+```
+{
+    "address": "123124",
+    "balance": 1030
+}
+```
+
