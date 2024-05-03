@@ -1,6 +1,5 @@
 = Withdrawal Service
 
-
 Design and implement a RESTful API (including data model and the backing implementation) with following functional requirements:
 
 * User can send money from their account to another user's account
